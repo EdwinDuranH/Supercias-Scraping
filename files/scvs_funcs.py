@@ -23,7 +23,7 @@ class PlannedException(Exception):
     pass
 
 def update():
-    with open("allexps.csv") as f:
+    with open(r"../allexps.csv") as f:
         content = f.readlines()
     a = os.listdir("Financials")
     content.remove("expediente\n")
@@ -37,9 +37,9 @@ def solve(src):
     #Save and Read the captcha image
     ur.urlretrieve(src,"captcha.png")
     #Gaming PC
-    pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+    # pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
     #DHUB PC
-#    pytesseract.pytesseract.tesseract_cmd = r"C:\Users\eduranh\AppData\Local\Programs\Tesseract-OCR\tesseract.exe"
+    pytesseract.pytesseract.tesseract_cmd = r"C:\Users\eduranh\AppData\Local\Programs\Tesseract-OCR\tesseract.exe"
     #Other PC
 #     pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Py Tesseract\tesseract.exe"
     img = cv2.imread("captcha.png")
@@ -102,7 +102,7 @@ def navFin(driver,fails = 0):
         fails += 1
         driver.refresh()
         if fails < 10:
-            navFin(driver)
+            navFin(driver,fails)
         else:
             raise PlannedException("Too many failures.")
             
@@ -168,9 +168,10 @@ def download(driver,p,count = 0):
             print(f"Current amount of files in dir: {file_num}")
             print(f"File number {count}")
             #Rows where the PDFs are:
-            wait.until(EC.presence_of_element_located((By.CLASS_NAME,"ui-widget-content.ui-datatable-even")))
-            rows_p = driver.find_elements(By.CLASS_NAME,"ui-widget-content.ui-datatable-even")
-            rows_i = driver.find_elements(By.CLASS_NAME,"ui-widget-content.ui-datatable-odd")
+            wait.until(EC.element_to_be_clickable((By.ID,"frmInformacionCompanias:tabViewDocumentacion:tblDocumentosEconomicos")))
+            m_table = driver.find_element(By.ID,"frmInformacionCompanias:tabViewDocumentacion:tblDocumentosEconomicos")
+            rows_p = m_table.find_elements(By.CLASS_NAME,"ui-widget-content.ui-datatable-even")
+            rows_i = m_table.find_elements(By.CLASS_NAME,"ui-widget-content.ui-datatable-odd")
             rows_u = zip(rows_p,rows_i)
             rows = join(rows_u)
 

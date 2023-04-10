@@ -1,11 +1,14 @@
-from scvs_funcs import *
+#Make master directory to download the files:
+if not os.path.isdir("Financials"):
+    os.mkdir("Financials")
 
-path = r"C:\Users\eduranh\OneDrive - Universidad San Francisco de Quito\USFQ Online\DataHub\Supercias\Dummy Folder\Edwin\Git Stuff\files\Financials"
-# path = r"C:\Users\EDWIN\OneDrive - Universidad San Francisco de Quito\USFQ Online\DataHub\Supercias\Financial Information\Financials"
+#Get the absolute path for the master financials directory
+path = f"{os.getcwd()}\\Financials"
 url = "https://appscvsconsultas.supercias.gob.ec/consultaCompanias/societario/busquedaCompanias.jsf"
 
 #Read file with company exps
-dframe = pd.read_csv("allexps.csv")
+dframe = pd.read_csv(r"..\allexps.csv")
+pass
 exps = update()[:1000]
 len(exps)
 
@@ -13,9 +16,10 @@ used_rucs = []
 
 while len(exps) != 0:
     used = exps.pop(0)
+    #Generate directory for the company's information
     directory = f"Financials\\{used}"
-    if not os.path.isdir(f"Financials\\{used}"):
-        os.mkdir(f"Financials\\{used}")       
+    if not os.path.isdir(directory):
+        os.mkdir(directory)       
     options = webdriver.ChromeOptions()
     options.add_experimental_option("prefs",{"download.default_directory":f"{path}\\{used}",
                                       "download.prompt_for_download":False,
