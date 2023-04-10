@@ -1,6 +1,6 @@
 from scvs_funcs import *
 
-path = r"C:\Users\eduranh\OneDrive - Universidad San Francisco de Quito\USFQ Online\DataHub\Supercias\Dummy Folder\Edwin\Supercias\Financials"
+path = r"C:\Users\eduranh\OneDrive - Universidad San Francisco de Quito\USFQ Online\DataHub\Supercias\Dummy Folder\Edwin\Git Stuff\files\Financials"
 # path = r"C:\Users\EDWIN\OneDrive - Universidad San Francisco de Quito\USFQ Online\DataHub\Supercias\Financial Information\Financials"
 url = "https://appscvsconsultas.supercias.gob.ec/consultaCompanias/societario/busquedaCompanias.jsf"
 

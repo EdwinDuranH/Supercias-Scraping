@@ -37,7 +37,9 @@ def solve(src):
     #Save and Read the captcha image
     ur.urlretrieve(src,"captcha.png")
     #Gaming PC
-    pytesseract.pytesseract.tesseract_cmd = r"C:\Users\eduranh\AppData\Local\Programs\Tesseract-OCR\tesseract.exe"
+    pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+    #DHUB PC
+#    pytesseract.pytesseract.tesseract_cmd = r"C:\Users\eduranh\AppData\Local\Programs\Tesseract-OCR\tesseract.exe"
     #Other PC
 #     pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Py Tesseract\tesseract.exe"
     img = cv2.imread("captcha.png")
@@ -66,55 +68,81 @@ def solve_other(driver):
         pass
     return answer
 
+def waitDownload(p):
+    print("Waiting for download",end="")
+    while any([file.endswith("crdownload") for file in os.listdir(p)]):
+        print(".",end="")
+        time.sleep(0.5)
+
 def navFin(driver,fails = 0):
     try:
         #Click Yearly Information Tab:
         btn = WebDriverWait(driver,10).until(
             EC.presence_of_element_located((
-                By.ID,"frmMenu:menuInformacionAnualPresentada")))
+                By.ID,"frmMenu:menuDocumentacion")))
         btn.click()
-        time.sleep(2)
+
         #In case captcha comes up, solve it:
+        time.sleep(1)
         solve_other(driver)
+        time.sleep(1)
+
+        #Open the Economic Documents tab
+        driver.find_elements(By.CLASS_NAME,"ui-tabs-header.ui-state-default.ui-corner-top")[2].click()
+  
+  #In case captcha comes up, solve it:
+        time.sleep(1)
+        solve_other(driver)
+        time.sleep(1)
+
         print("Financial Info Opened Successfully")
         fails = 0
     except (TimeoutException,ElementNotInteractableException,ElementClickInterceptedException,HTTPError,NoSuchElementException):
         print("Nav. to financial failed")
         fails += 1
         driver.refresh()
-        if fails > 10:
+        if fails < 10:
             navFin(driver)
+        else:
+            raise PlannedException("Too many failures.")
+            
 
 
 def pdfShow(driver):
     time.sleep(5)
-#     try:
-        #Find the Historical Balance sheets submitted by the company
-#     box = WebDriverWait(driver,10).until(EC.element_to_be_clickable((
-#         By.CLASS_NAME,"fui-column-filter.ui-inputfield.ui-inputtext.ui-widget.ui-state-default.ui-corner-all")))
-    #Seach for Balance Sheets (Only identifiable by class name. Second object with that name)
-    wait = WebDriverWait(driver,10)
-    wait.until(EC.presence_of_element_located((By.CLASS_NAME,"ui-column-filter.ui-inputfield.ui-inputtext.ui-widget.ui-state-default.ui-corner-all")))
-    driver.find_elements(
-        By.CLASS_NAME,
-        "ui-column-filter.ui-inputfield.ui-inputtext.ui-widget.ui-state-default.ui-corner-all")[1].send_keys("3.1.1")
-    print("Keys Sent")
+    wait = WebDriverWait(driver,10,0.2)
+    wait.until(EC.element_to_be_clickable((By.ID,"frmInformacionCompanias:tabViewDocumentacion:tblDocumentosEconomicos")))
+    #Find the adequate information table.
+    m_table = driver.find_element(By.ID,"frmInformacionCompanias:tabViewDocumentacion:tblDocumentosEconomicos")
+    #Find the pertinent search bar with the proper search criteria.
+    s_bar = m_table.find_element(By.CLASS_NAME,"ui-column-filter.ui-inputfield.ui-inputtext.ui-widget.ui-state-default.ui-corner-all")
+    s_bar.send_keys("AUD")
+
+    #Audited Financials won't always be available. If it's the case, then extract every statement separately.
+    #Wait until the table updates to check if there are any elements to download.
+    time.sleep(5)
+    wait.until(EC.element_to_be_clickable(s_bar))
+
+
+    print(len(m_table.find_elements(By.CLASS_NAME,"ui-widget-content.ui-datatable-even")))
+    if len(m_table.find_elements(By.CLASS_NAME,"ui-widget-content.ui-datatable-even")) == 0:
+        print("No audited financial statements found. Resorting to downloading the regular financials")
+        s_bar.send_keys(Keys.CONTROL + "a")
+        s_bar.send_keys(Keys.DELETE)
+        time.sleep(0.5)
+        wait.until(EC.element_to_be_clickable(s_bar))
+        s_bar.send_keys("Estado")
+
     #Solve Captcha if it pops up
     time.sleep(0.5)
     solve_other(driver)
     time.sleep(0.5)
+
     #Show every document ever uploaded.
-    elements = Select(driver.find_element(By.CSS_SELECTOR,
+    elements = Select(m_table.find_element(By.CSS_SELECTOR,
                            "select.ui-paginator-rpp-options.ui-widget.ui-state-default.ui-corner-left"))
     elements.select_by_visible_text("*")
-    time.sleep(2)
-#     except (TimeoutException,ElementNotInteractableException,ElementClickInterceptedException,HTTPError,NoSuchElementException) as e:
-#         print("PDF Showing Failed")
-#         print(e)
-#         driver.refresh()
-#         navFin(driver)
-#         time.sleep(5)
-#         pdfShow(driver)
+ 
 def join(rows_u):
     d = []
     for i in rows_u:
