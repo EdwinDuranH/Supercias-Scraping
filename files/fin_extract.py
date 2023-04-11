@@ -9,8 +9,7 @@ path = f"{os.getcwd()}\\Financials"
 url = "https://appscvsconsultas.supercias.gob.ec/consultaCompanias/societario/busquedaCompanias.jsf"
 
 #Read file with company exps
-dframe = pd.read_csv(r"..\allexps.csv")
-pass
+dframe = pd.read_csv(r"..\exps.txt")
 exps = update()[:1000]
 len(exps)
 
