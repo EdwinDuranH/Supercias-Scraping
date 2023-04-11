@@ -1,3 +1,5 @@
+from scvs_funcs import *
+
 #Make master directory to download the files:
 if not os.path.isdir("Financials"):
     os.mkdir("Financials")
@@ -49,10 +51,10 @@ while len(exps) != 0:
         #Navigate to the financial information we seek.
         download(driver,p = directory)
     except (TimeoutException,ElementNotInteractableException,ElementClickInterceptedException,HTTPError,NoSuchElementException,StaleElementReferenceException) as e:
-        print("Something Went Wrong")
+        print("Something Went Wrong" + str(e))
         exps.insert(0,used)
         continue
-    except (RecursionError,UnexpectedAlertPresentException):
+    except (RecursionError,UnexpectedAlertPresentException,PlannedException):
         print("Maximum Recursion exceeded")
         exps.insert(0,used)
         files = os.listdir(f"Financials\\{used}")

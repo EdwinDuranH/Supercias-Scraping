@@ -102,8 +102,10 @@ def navFin(driver,fails = 0):
         fails += 1
         driver.refresh()
         if fails < 10:
+            print(f"Fail number {fails}")
             navFin(driver,fails)
         else:
+            print("Too many failures")
             raise PlannedException("Too many failures.")
             
 
@@ -213,7 +215,7 @@ def download(driver,p,count = 0):
                 if fails > 10:
                     raise PlannedException("Documents consistently not downloading. Starting again.")
             count += 1      
-    except (TimeoutException,ElementNotInteractableException,ElementClickInterceptedException,HTTPError,PlannedException) as e:
+    except (TimeoutException,ElementNotInteractableException,ElementClickInterceptedException,HTTPError) as e:
         print("Load Failed...")
         driver.refresh()
         download(driver,p,count)
