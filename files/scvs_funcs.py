@@ -22,15 +22,15 @@ class PlannedException(Exception):
     "Exception for whenever I need a part of the program to fail"
     pass
 
+class NoAuditedException(Exception):
+    "Exception for when no audited financials are available"
+    pass
+
 def update():
-    with open(r"../allexps.csv") as f:
-        content = f.readlines()
+    content = list(pd.read_csv(r"..\exps.txt",sep = "\t",encoding = "latin-1")["EXPEDIENTE"])
     a = os.listdir("Financials")
-    content.remove("expediente\n")
     for i in a:
-        content.remove(f"{i}\n")
-    for i in range(len(content)):
-        content[i] = content[i].replace("\n","")
+        content.remove(int(i))
     return content
 
 def solve(src):
@@ -68,12 +68,6 @@ def solve_other(driver):
         pass
     return answer
 
-def waitDownload(p):
-    print("Waiting for download",end="")
-    while any([file.endswith("crdownload") for file in os.listdir(p)]):
-        print(".",end="")
-        time.sleep(0.5)
-
 def navFin(driver,fails = 0):
     try:
         #Click Yearly Information Tab:
@@ -83,17 +77,17 @@ def navFin(driver,fails = 0):
         btn.click()
 
         #In case captcha comes up, solve it:
-        time.sleep(1)
+        time.sleep(0.25)
         solve_other(driver)
-        time.sleep(1)
+        time.sleep(0.25)
 
         #Open the Economic Documents tab
         driver.find_elements(By.CLASS_NAME,"ui-tabs-header.ui-state-default.ui-corner-top")[2].click()
   
   #In case captcha comes up, solve it:
-        time.sleep(1)
+        time.sleep(0.25)
         solve_other(driver)
-        time.sleep(1)
+        time.sleep(0.25)
 
         print("Financial Info Opened Successfully")
         fails = 0
@@ -108,9 +102,36 @@ def navFin(driver,fails = 0):
             print("Too many failures")
             raise PlannedException("Too many failures.")
             
-
-
-def pdfShow(driver):
+def auditedShow(driver):
+    time.sleep(1)
+    wait = WebDriverWait(driver,10,0.2)
+    wait.until(EC.visibility_of_element_located((By.ID,"frmInformacionCompanias:tabViewDocumentacion:tblDocumentosEconomicos")))
+    #Find the adequate information table.
+    m_table = driver.find_element(By.ID,"frmInformacionCompanias:tabViewDocumentacion:tblDocumentosEconomicos")
+    #Find the pertinent search bar with the proper search criteria.
+    s_bar = m_table.find_element(By.CLASS_NAME,"ui-column-filter.ui-inputfield.ui-inputtext.ui-widget.ui-state-default.ui-corner-all")
+    s_bar.send_keys("AUD")
+    #Display every single document possible
+    elements = Select(m_table.find_element(By.CSS_SELECTOR,
+                        "select.ui-paginator-rpp-options.ui-widget.ui-state-default.ui-corner-left"))
+    elements.select_by_visible_text("*")
+    #Audited Financials won't always be available. If it's the case, then extract every statement separately.
+    #Wait until the table updates to check if there are any elements to download.
+    time.sleep(1)
+    wait.until(EC.element_to_be_clickable(m_table))
+    # m_table.click()
+ 
+    if len(m_table.find_elements(By.CLASS_NAME,"ui-widget-content.ui-datatable-even")) == 0:
+        print("No audited financial statements found. Resorting to downloading the regular financials")
+        s_bar.send_keys(Keys.CONTROL + "a")
+        s_bar.send_keys(Keys.DELETE)
+        time.sleep(0.5)
+        wait.until(EC.element_to_be_clickable(s_bar))
+        raise NoAuditedException
+    time.sleep(3)
+    
+def finShow(driver,crit):
+    print(crit)
     time.sleep(5)
     wait = WebDriverWait(driver,10,0.2)
     wait.until(EC.element_to_be_clickable((By.ID,"frmInformacionCompanias:tabViewDocumentacion:tblDocumentosEconomicos")))
@@ -118,32 +139,25 @@ def pdfShow(driver):
     m_table = driver.find_element(By.ID,"frmInformacionCompanias:tabViewDocumentacion:tblDocumentosEconomicos")
     #Find the pertinent search bar with the proper search criteria.
     s_bar = m_table.find_element(By.CLASS_NAME,"ui-column-filter.ui-inputfield.ui-inputtext.ui-widget.ui-state-default.ui-corner-all")
-    s_bar.send_keys("AUD")
-
-    #Audited Financials won't always be available. If it's the case, then extract every statement separately.
-    #Wait until the table updates to check if there are any elements to download.
+    s_bar.send_keys(Keys.CONTROL + "a")
+    s_bar.send_keys(Keys.DELETE)
     time.sleep(5)
-    wait.until(EC.element_to_be_clickable(s_bar))
-
-
-    print(len(m_table.find_elements(By.CLASS_NAME,"ui-widget-content.ui-datatable-even")))
-    if len(m_table.find_elements(By.CLASS_NAME,"ui-widget-content.ui-datatable-even")) == 0:
-        print("No audited financial statements found. Resorting to downloading the regular financials")
-        s_bar.send_keys(Keys.CONTROL + "a")
-        s_bar.send_keys(Keys.DELETE)
-        time.sleep(0.5)
-        wait.until(EC.element_to_be_clickable(s_bar))
-        s_bar.send_keys("Estado")
-
+    s_bar.send_keys(crit)
+    
     #Solve Captcha if it pops up
     time.sleep(0.5)
     solve_other(driver)
     time.sleep(0.5)
 
-    #Show every document ever uploaded.
+    #Display every single document possible
     elements = Select(m_table.find_element(By.CSS_SELECTOR,
-                           "select.ui-paginator-rpp-options.ui-widget.ui-state-default.ui-corner-left"))
+                        "select.ui-paginator-rpp-options.ui-widget.ui-state-default.ui-corner-left"))
     elements.select_by_visible_text("*")
+
+    #Solve Captcha if it pops up
+    time.sleep(0.5)
+    solve_other(driver)
+    time.sleep(0.5)
  
 def join(rows_u):
     d = []
@@ -151,15 +165,18 @@ def join(rows_u):
         d.extend(i)
     return d
 
-def download(driver,p,count = 0):
-    fails = 0
+def separator(crit,p):
+    print(f"Path for separator: {p}")
+    if not os.path.isdir(f"{p}\\{crit}"):
+        with open(f"{p}\\{crit}","w") as f:
+            f.write(" ")
+
+def download(driver,p,count = 0,fails = 0,audit = True, crit = "AUD"):
+    a = audit
+    print(p)
+    print(f"Audit = {a}")
+    wait = WebDriverWait(driver,10)
     try:
-        wait = WebDriverWait(driver,10)
-        print("Beginning Navigation")
-        navFin(driver)
-        time.sleep(3)
-        pdfShow(driver)
-        print("Navigation Finished")
         #Fake rows element to start while loop
         rows = range(100)
         #Set an action object to execute clicks on the webpage at will.
@@ -169,6 +186,7 @@ def download(driver,p,count = 0):
             file_num = len(os.listdir(p))
             print(f"Current amount of files in dir: {file_num}")
             print(f"File number {count}")
+            
             #Rows where the PDFs are:
             wait.until(EC.element_to_be_clickable((By.ID,"frmInformacionCompanias:tabViewDocumentacion:tblDocumentosEconomicos")))
             m_table = driver.find_element(By.ID,"frmInformacionCompanias:tabViewDocumentacion:tblDocumentosEconomicos")
@@ -177,6 +195,11 @@ def download(driver,p,count = 0):
             rows_u = zip(rows_p,rows_i)
             rows = join(rows_u)
 
+            #Are there any documents?
+            if len(m_table.find_elements(By.CLASS_NAME,"ui-widget-content.ui-datatable-even")) == 0 and audit == True:
+                print("No audited financials")
+                raise NoAuditedException
+            separator(crit,p)
             #Open the desired PDF.
     #         wait.until(EC.element_to_be_clickable((By.CLASS_NAME,"ui-widget-content.ui-datatable-even")))
             pdf = rows[count].find_element(By.CLASS_NAME,"ui-commandlink.ui-widget")
@@ -192,36 +215,66 @@ def download(driver,p,count = 0):
             if count == 0:
                 print("First Download")
         #         Download Button (First Download)
-                action.move_to_element_with_offset(x,365,-290)
+                action.move_to_element_with_offset(x,360,-225)
                 action.click()
                 action.perform()
                 time.sleep(3)
             else:
                 #Download Button (After first download)
-                action.move_to_element_with_offset(x,365,-270)
+                action.move_to_element_with_offset(x,365,-210)
                 action.click()
                 action.perform()
            #X Button (After first download)
-            action.move_to_element_with_offset(x,470,-320)
+            action.move_to_element_with_offset(x,450,-240)
             action.click()
             action.perform()
             #Check if file was actually downloaded
             print(f"New amount of files in dir: {len(os.listdir(p))}")
             if file_num == len(os.listdir(p)):
-                print("No file was downloaded. Repeating iteration...")
-                driver.refresh()
-                download(driver,p,count)
-                fails += 1
                 if fails > 10:
+                    print("Documents consistently not downloading. Starting again.")
                     raise PlannedException("Documents consistently not downloading. Starting again.")
+                driver.refresh()
+                fails += 1
+                
+                print("No file was downloaded. Repeating iteration...")
+                navFin(driver)
+                time.sleep(1)
+                #Download the right kind of documents.
+                if audit == True:
+                    auditedShow(driver)
+                else:
+                    finShow(driver,crit)
+                download(driver = driver,p = p,
+                        count = count,fails = fails,audit = a,crit = crit)
             count += 1      
     except (TimeoutException,ElementNotInteractableException,ElementClickInterceptedException,HTTPError) as e:
         print("Load Failed...")
         driver.refresh()
-        download(driver,p,count)
+        navFin(driver)
+        time.sleep(3)
+        #Download the right kind of documents.
+        if audit == True:
+            auditedShow(driver)
+        else:
+            finShow(driver,crit)
+        download(driver = driver,p = p,
+                 count = count,fails = fails,audit = a,crit = crit)
     except NoSuchElementException:
         print("No PDF available for this year")
         count += 1
-        download(driver,p,count)
+        print("Load Failed...")
+        driver.refresh()
+        navFin(driver)
+        time.sleep(3)
+        if audit == True:
+            print("Audit is equal to true")
+            auditedShow(driver)
+        else:
+            print(f"Here, Audit is equal to:{audit}")
+            finShow(driver,crit)
+            download(driver = driver,
+                     p = p,count = count,fails = fails,audit = a,crit = crit)
+
     except IndexError:
         print("No more PDFs")
